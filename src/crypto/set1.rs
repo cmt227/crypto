@@ -9,3 +9,14 @@ pub fn fixed_xor(bytes1: Vec<u8>, bytes2: Vec<u8>) -> Vec<u8> {
     }
     res
 }
+
+// Produce the vector resulting from the xor of 
+// each byte in vec with the single byte b.
+pub fn xor_one_byte(vec: Vec<u8>, b: u8) -> Vec<u8> {
+    let mut v: Vec<u8> = vec.clone();
+    for i in 0..v.len() {
+        v[i] = b;
+    }
+
+    fixed_xor(vec, v)
+}
