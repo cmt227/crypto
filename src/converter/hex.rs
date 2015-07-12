@@ -1,4 +1,19 @@
+extern crate rustc_serialize;
+
 use std::string::String;
+use self::rustc_serialize::base64::*;
+
+pub fn base64_of_hex(hex: String) -> String {
+    let config = Config {
+        char_set: Standard,
+        newline: Newline::LF,
+        pad: false,
+        line_length: None,
+    };
+
+    let bytes = hex.bytes_of_hex();
+    bytes.to_base64(config)
+}
 
 pub trait FromHex {
     fn bytes_of_hex(&self) -> Vec<u8>;
