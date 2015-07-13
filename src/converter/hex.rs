@@ -3,7 +3,22 @@ extern crate rustc_serialize;
 use std::string::String;
 use self::rustc_serialize::base64::*;
 
-pub fn base64_of_hex(hex: String) -> String {
+pub fn bytes_of_base64(s: &String) -> Vec<u8> {
+    s.from_base64().unwrap()
+}
+
+pub fn base64_of_bytes(bytes: &Vec<u8>) -> String {
+    let config = Config {
+        char_set: Standard,
+        newline: Newline::LF,
+        pad: false,
+        line_length: None,
+    };
+    bytes.to_base64(config)
+}
+
+// trying to write using a borrowed string.
+pub fn base64_of_hex(hex: &String) -> String {
     let config = Config {
         char_set: Standard,
         newline: Newline::LF,
