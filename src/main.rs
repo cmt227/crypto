@@ -1,11 +1,14 @@
-#![feature(slice_extras)]
-#![feature(vec_push_all)]
+#![feature(convert)]
 
 extern crate crypto;
 
+use std::env;
 use crypto::converter::hex::*;
 use crypto::crypto::set1::*;
-use std::env;
+use std::path::Path;
+use std::fs::File;
+use std::io::BufReader;
+use std::io::prelude::*;
 
 fn main() {
     // all arguments should be hex encoded
@@ -13,90 +16,87 @@ fn main() {
     // first arg is the program name
     if args.len() <= 1 {
         panic!("no argument to convert :(");
-    }/* else {
-        // There is at least one argument 
-        s1 = args[1].clone();
-        bytes1 = s1.bytes_of_hex();
     }
-    // collect some more arguments if they exist
-    if args.len() > 3 {
-        s2 = args[2].clone();
-        bytes2 = s2.bytes_of_hex();
+    let ch = args[1].clone();
+    println!("{}", ch);
+    match ch.as_str() {
+        // Challenge 1 -- one arg: a hex encoded string.
+        "1.1" => {
+            let s1 = args[2].clone();
+            let res = base64_of_hex(&s1);
+            println!("Program successful.\nBase64 encoding of input: {}", res);
+        },
+        // Challenge 2 -- two args: both hex encoded strings (of equal length!)
+        "1.2" => {
+            let s1 = args[2].clone();
+            let bytes1 = s1.bytes_of_hex();
+            let s2 = args[3].clone();
+            let bytes2 = s2.bytes_of_hex();
+            let res = fixed_xor(&bytes1, &bytes2).hex_of_bytes();
+            println!("Program successful!\nHex encoding of fixed-xor of arguments: {}", res);
+        },
+        // Challenge 3 -- one argument: a single-byte xor cipher in hex to be decoded.
+        "1.3" => {
+            let s1 = args[2].clone();
+            let bytes1 = s1.bytes_of_hex();
+            let msg = String::from("ETAOIN SHRDLU");
+            let msg_bytes = msg.into_bytes();
+            println!("Attemping to decode single-byte xor cipher into English plaintext...");
+            let res = single_byte_xor_decode(&bytes1);
+            println!("Program successful!");
+            println!("Decoded string: {}\nRank: {}\nByte: {}", res.2, res.0, res.1);
+            let dec = xor_one_byte(&msg_bytes, &res.1);
+            println!("msg decoded with byte yields: {}", String::from_utf8(dec).unwrap());
+        },
+        // Challenge 4
+        "1.4" => {
+            let mut sol = ( 0, 0u8, String::new() );
+
+            let path = Path::new("inputs/1.4.txt");
+            let file = File::open(path).unwrap();
+            let reader: BufReader<File> = BufReader::new(file);
+            for line in reader.lines() {
+                let line: Vec<u8> = line.unwrap().bytes_of_hex();
+                println!("{:?}", line);
+                /*let (r, b, s) = single_byte_xor_decode(&line);
+                if r > sol.0 {
+                    sol = (r, b, s);
+                }*/
+            }
+            println!("Highest ranking decoded string: {}", sol.2);
+            println!("Rank: {}", sol.0);
+            println!("Byte: {}", sol.1);
+        },
+        _ => println!("Haven't done that challenge yet!")
     }
-    if args.len() > 4 {
-        s3 = args[3].clone();
-        bytes3 = s3.bytes_of_hex();
-    }*/
-    /* challenge 1 
-    let s: String = args[1].clone();
-    let res = base64_of_hex(s);
-    println!("Program successful.\nResult: {}", res);
-    */
-    /* challenge 2
-    let s1: String = args[1].clone();
-    let s2: String = args[2].clone();
-    let bytes1 = s1.bytes_of_hex();
-    let bytes2 = s2.bytes_of_hex();
-    let res = fixed_xor(bytes1, bytes2).hex_of_bytes();
-    println!("Program successful!\nResult: {}", res);
-    */
-    // challenge 3
-    // takes 1 arg, the single-byte xor encoded string.
-    // Think im starting to get a handle on the ownership & borrowing stuff!
 
-    let s1: String = args[1].clone();
-    let s1_64: String = base64_of_hex(&s1);
-    let bytes1: Vec<u8> = s1.bytes_of_hex();
-    assert_eq!(bytes1, bytes_of_base64(&s1_64));
-    assert_eq!(s1_64, base64_of_bytes(&bytes1));
-    println!("Input string in base64: {}", s1_64);
-/*    
-    let s1: String = args[1].clone();
-    let bytes1 = bytes_of_base64(&s1);
-    let res = xor_one_byte(&bytes1, &88u8);
-    println!("decoded string: {}", base64_of_bytes(&res));
-
-    let s2: String = args[2].clone();
-    let s2_64 = base64_of_hex(&s2);
-    let bytes2 = s2.bytes_of_hex();
-    println!("other string in base64: {}", s2_64);
- 
-    let res = fixed_xor(&bytes1, &bytes2);
-    println!("fixed_xor of the two byte strings(printed in hex): {}", res.hex_of_bytes());
-*/
-    let mut rank = 0;
-    for byte in 0..255 {
-        let res = xor_one_byte(&bytes1, &byte);
-        if rank_string(&res) > rank {
-            rank = rank_string(&res);
-            println!("Found new winner: rank: {}, byte: {}, string: {}", rank, byte, base64_of_bytes(&res));
+    /* FizzBuzz!
+    for i in 1..101 {
+        let d3 = i.is_divisible_by(3);
+        let d5 = i.is_divisible_by(5);
+        if d3 && d5 {
+            println!("FizzBuzz!");
+        } else if d3 {
+            println!("Fizz");
+        } else if d5 {
+            println!("Buzz");
+        } else {
+            println!("{}", i);
         }
     }
-    println!("Program successful!");
-    //println!("Result: {}", sol);
-    //println!("Byte: {}", b);
-    //println!("Rank: {}", rank);
+    */
 }
 
-// Returns an integer representing the 'rank' of a string.
-// attempt 1: rank == number of vowels in the string.
-fn rank_string(s: &Vec<u8>) -> i32 {
-    num_eng_chars(s)
+trait Divisible {
+    fn is_divisible_by(&self, d: i32) -> bool;
 }
 
-
-// Returns the number of vowels in the byte vector s
-fn num_eng_chars(s: &Vec<u8>) -> i32 {
-    if s.len() == 0 {
-        0
-    } else {
-        let mut v = Vec::new();
-        v.push_all(s.tail());
-        match *s.first().unwrap() {
-            b'a'...b'z' | b'A'...b'Z' | b' ' => {
-                1 + num_eng_chars(&v)
-            },
-            _ => num_eng_chars(&v)
+impl Divisible for i32 {
+    fn is_divisible_by(&self, d: i32) -> bool {
+        if self % d == 0 {
+            true
+        } else {
+            false
         }
     }
 }
