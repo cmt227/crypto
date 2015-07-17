@@ -1,6 +1,6 @@
 extern crate crypto;
 
-use crypto::converter::hex::*;
+use crypto::converter::*;
 use std::string::String;
 
 #[test]
@@ -13,8 +13,8 @@ fn hex_convertions() {
     ];
     for &(h, v) in pairs.iter() {
         let hex = String::from(h);
-        let bytes: Vec<u8> = hex.bytes_of_hex();
-        let s: String = v.hex_of_bytes();
+        let bytes: Vec<u8> = from_hex(&hex);
+        let s: String = to_hex(&v);
         assert_eq!(bytes, *v);
         assert_eq!(s, hex);
     }

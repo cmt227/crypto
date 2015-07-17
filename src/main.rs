@@ -1,10 +1,9 @@
 #![feature(convert)]
 
 extern crate crypto;
-
 use std::env;
-use crypto::converter::hex::*;
-use crypto::crypto::set1::*;
+use crypto::converter::*;
+use crypto::set1::*;
 use std::path::Path;
 use std::fs::File;
 use std::io::BufReader;
@@ -18,31 +17,53 @@ fn main() {
         panic!("no argument to convert :(");
     }
     let ch = args[1].clone();
-    println!("{}", ch);
+    println!("Running challenge {}", ch);
     match ch.as_str() {
         // Challenge 1 -- one arg: a hex encoded string.
         "1.1" => {
-            let s1 = args[2].clone();
-            let res = base64_of_hex(&s1);
-            println!("Program successful.\nBase64 encoding of input: {}", res);
+            let s1: Hex = match Hex::from_string(args[2].clone()) {
+                Ok(res) => res,
+                Err(_) => panic!("Error!"),
+            };
+            let s2: Base64 = match Base64::from_string(args[3].clone()) {
+                Ok(res) => res,
+                Err(_) => panic!("ERROR"),
+            };
+            println!("Input1 (Hex): {}\nInput2 (Base64): {}", s1.as_string(), s2.as_string());
+            let b1 = s1.as_vec();
+            let b2 = s2.as_vec();
+            println!("Input1 (ascii): {}\nInput2 (ascii): {}", String::from_utf8(b1).unwrap(), String::from_utf8(b2).unwrap());
+            let b1 = s1.as_vec();
+            let b2 = s2.as_vec();
+            println!("Input1 as Base64: {}", Base64::from_vec(b1).as_string());
+            println!("Input2 as Hex: {}", Hex::from_vec(b2).as_string());
         },
         // Challenge 2 -- two args: both hex encoded strings (of equal length!)
         "1.2" => {
-            let s1 = args[2].clone();
-            let bytes1 = s1.bytes_of_hex();
-            let s2 = args[3].clone();
-            let bytes2 = s2.bytes_of_hex();
-            let res = fixed_xor(&bytes1, &bytes2).hex_of_bytes();
-            println!("Program successful!\nHex encoding of fixed-xor of arguments: {}", res);
+            let s1 = match Hex::from_string(args[2].clone()) {
+                Ok(res) => res,
+                Err(_) => panic!("Error on input 1"),
+            };
+            let s2 = match Hex::from_string(args[3].clone()) {
+                Ok(res) => res,
+                Err(_) => panic!("Error in input 2"),
+            };
+            let b1 = s1.as_vec();
+            let b2 = s2.as_vec();
+            let res = Hex::from_vec( fixed_xor(&b1, &b2) );
+            println!("Program successful!\nHex encoding of fixed-xor of arguments: {}", res.as_string());
         },
         // Challenge 3 -- one argument: a single-byte xor cipher in hex to be decoded.
         "1.3" => {
-            let s1 = args[2].clone();
-            let bytes1 = s1.bytes_of_hex();
+            let s1 = match Hex::from_string(args[2].clone()) {
+                Ok(res) => res,
+                Err(_) => panic!("Error on input"),
+            };
+            let b1 = s1.as_vec();
             let msg = String::from("ETAOIN SHRDLU");
             let msg_bytes = msg.into_bytes();
             println!("Attemping to decode single-byte xor cipher into English plaintext...");
-            let res = single_byte_xor_decode(&bytes1);
+            let res = single_byte_xor_decode(&b1);
             println!("Program successful!");
             println!("Decoded string: {}\nRank: {}\nByte: {}", res.2, res.0, res.1);
             let dec = xor_one_byte(&msg_bytes, &res.1);
@@ -50,23 +71,47 @@ fn main() {
         },
         // Challenge 4
         "1.4" => {
-            let mut sol = ( 0, 0u8, String::new() );
-
             let path = Path::new("inputs/1.4.txt");
             let file = File::open(path).unwrap();
             let reader: BufReader<File> = BufReader::new(file);
-            for line in reader.lines() {
-                let line: Vec<u8> = line.unwrap().bytes_of_hex();
-                println!("{:?}", line);
-                /*let (r, b, s) = single_byte_xor_decode(&line);
-                if r > sol.0 {
-                    sol = (r, b, s);
-                }*/
+            let mut i = 0;
+            let mut rank = 0;
+            for l in reader.lines() {
+                i += 1;
+                let line: Hex = match Hex::from_string(l.unwrap()) {
+                    Ok(res) => res,
+                    Err(_) => panic!("Error reading line {}", i),
+                };
+                let res: Vec<u8> = line.as_vec();
+                let (r, b, s) = single_byte_xor_decode(&res);
+                if r > rank {
+                    rank = r;
+                    println!("New winner! Line {} decoded: {}", i, s);
+                    println!("Rank: {}, Byte: {}\n", r, b);
+                }
             }
-            println!("Highest ranking decoded string: {}", sol.2);
-            println!("Rank: {}", sol.0);
-            println!("Byte: {}", sol.1);
         },
+        // Challenge 5
+        "1.5" => {
+            let mut bytes1 = Vec::new();
+            let path = Path::new("inputs/1.5.txt");
+            let file = File::open(path).unwrap();
+            let mut reader: BufReader<File> = BufReader::new(file);
+            let _ = reader.read_to_end(&mut bytes1);
+            // two args are eng plaintext.
+            let key = String::from("ICE");;
+            let key_bytes = key.into_bytes();
+            let enc: Vec<u8> = repeating_xor_encrypt(&bytes1, &key_bytes);
+            let res = Hex::from_vec(enc);
+            println!("Result: {}", res.as_string());
+        }
+        // Challenge 6
+        "1.6" => {
+            let bytes1 = String::from("this is a test").into_bytes();
+            let bytes2 = String::from("wokka wokka!!!").into_bytes();
+            let dist = hamming_dist(&bytes1, &bytes2);
+            println!("Hamming distance between test strings is: {}", dist);
+        }
         _ => println!("Haven't done that challenge yet!")
     }
 
